@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+config.json
+systems_map.json
+build/
+dist/
+*.spec
+.venv/
+venv/

@@ -1,0 +1,14 @@
+{
+  "screenscraper": {
+    "devid": "",
+    "devpassword": "",
+    "softname": "RetroFE-Scraper",
+    "ssid": "",
+    "sspassword": ""
+  },
+  "target_lang": "fr",
+  "deepl_api_key": "",
+  "libretranslate_url": "https://libretranslate.com",
+  "libretranslate_api_key": "",
+  "system_id_map_file": "systems_map.json"
+}
