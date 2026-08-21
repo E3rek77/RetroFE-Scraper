@@ -30,6 +30,7 @@ needed), or clone the repo and run `python gui_main.py`. A free
 screenscraper.fr account is all you need — the software's developer
 credentials are already built in.
 
-Repo: [GitHub link here]
+Repo: https://github.com/E3rek77/RetroFE-Scraper
+Direct download (.exe, no Python needed): https://github.com/E3rek77/RetroFE-Scraper/releases/tag/v1.0.0
 
 Built for and by the CORE TYPE R community.

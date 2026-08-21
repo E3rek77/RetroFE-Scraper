@@ -32,6 +32,7 @@ Python requise), ou clone le dépôt et lance `python gui_main.py`. Un compte
 gratuit sur screenscraper.fr suffit — les identifiants développeur du
 logiciel sont déjà intégrés.
 
-Dépôt : [lien GitHub à ajouter]
+Dépôt : https://github.com/E3rek77/RetroFE-Scraper
+Téléchargement direct (.exe, sans Python) : https://github.com/E3rek77/RetroFE-Scraper/releases/tag/v1.0.0
 
 Projet développé pour et par la communauté CORE TYPE R.
