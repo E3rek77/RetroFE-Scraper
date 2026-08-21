@@ -8,12 +8,12 @@ C'est le point d'entrée que la CLI et la GUI appelleront.
 """
 from __future__ import annotations
 
+import glob
 import os
 import tempfile
 import zlib
 from dataclasses import dataclass, field
 from typing import Callable, Optional
-from urllib.parse import urlparse
 
 from . import scan_cache
 from .db_cache import invalidate_meta_db
@@ -84,12 +84,6 @@ def _compute_crc32(path: str) -> str:
     return f"{crc & 0xFFFFFFFF:08X}"
 
 
-def _ext_from_url(url: str) -> str:
-    path = urlparse(url).path
-    _, ext = os.path.splitext(path)
-    return ext or ".dat"
-
-
 def scan_collection(
     collection: Collection,
     scraper: Scraper,
@@ -154,9 +148,9 @@ def scan_collection(
                 # qui est tres frequent. Le nom seul est nettement plus
                 # tolerant.
                 match = scraper.search_by_hash(system_id, filename=rom.filename)
-        except ScreenScraperQuotaError:
+        except ScreenScraperQuotaError as e:
             stats.errors.append(
-                f"{collection.name}: quota ScreenScraper journalier dépassé, "
+                f"{collection.name}: quota/limite ScreenScraper atteint ({e}), "
                 f"scan interrompu à {i}/{total} -- relance plus tard pour continuer "
                 f"(la progression est sauvegardée)."
             )
@@ -183,17 +177,21 @@ def scan_collection(
                 continue
             target_dir = os.path.join(collection.path, "medium_artwork", key) \
                 if key != "system_artwork" else os.path.join(collection.path, "system_artwork")
-            existing = os.path.join(target_dir, rom.display_name + _ext_from_url(url))
-            if options.skip_existing and os.path.isfile(existing):
+            # ne devine plus l'extension pour verifier l'existant : on
+            # regarde s'il existe deja un fichier "<nom du jeu>.*" quelle
+            # que soit son extension (l'URL ScreenScraper ne donne aucune
+            # extension fiable, voir screenscraper.download_media)
+            existing_matches = glob.glob(os.path.join(target_dir, glob.escape(rom.display_name) + ".*"))
+            if options.skip_existing and existing_matches:
                 entry.media_keys_done.append(key)
                 continue
 
-            with tempfile.NamedTemporaryFile(suffix=_ext_from_url(url), delete=False) as tmp:
+            with tempfile.NamedTemporaryFile(delete=False) as tmp:
                 tmp_path = tmp.name
-            ok = scraper.download_media(url, tmp_path)
-            if ok:
+            ext = scraper.download_media(url, tmp_path)
+            if ext:
                 try:
-                    save_media_file(collection, key, rom.display_name, tmp_path)
+                    save_media_file(collection, key, rom.display_name, tmp_path, ext)
                     stats.media_downloaded += 1
                     entry.media_keys_done.append(key)
                 except Exception as e:
@@ -249,7 +247,7 @@ def scan_retrofe(
                 progress_cb(_coll, name, i, total)
         stats = scan_collection(collection, scraper, options, translator, cb)
         results[collection.name] = stats
-        if any("quota ScreenScraper journalier dépassé" in e for e in stats.errors):
+        if any("quota/limite ScreenScraper atteint" in e for e in stats.errors):
             quota_hit = True
 
     invalidate_meta_db(retrofe_root)

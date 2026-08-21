@@ -28,5 +28,7 @@ class Scraper(Protocol):
     def search_by_name(self, system_id: str, name: str) -> GameMatch:
         ...
 
-    def download_media(self, url: str, dest_path: str) -> bool:
+    def download_media(self, url: str, dest_path: str) -> Optional[str]:
+        """Retourne l'extension de fichier detectee (ex: ".png") si le
+        telechargement reussit, None sinon."""
         ...

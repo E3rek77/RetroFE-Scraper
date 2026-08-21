@@ -49,7 +49,7 @@ KEY_TO_RELPATH = {
     "box_texture": "medium_artwork/box_texture",
     "manual": "medium_artwork/manual",
     "support_texture": "medium_artwork/support_texture",
-    "cartridge": "medium_artwork/cartridge",
+    "medium_disc": "medium_artwork/medium_disc",
     "theme_pack": "medium_artwork/theme_pack",
     "mix_v1": "medium_artwork/mix_v1",
     "mix_v2": "medium_artwork/mix_v2",
@@ -149,11 +149,13 @@ def ensure_media_lines(collection: Collection, keys: Iterable[str]) -> list[str]
     return added
 
 
-def save_media_file(collection: Collection, key: str, game_display_name: str, source_path: str) -> str:
+def save_media_file(collection: Collection, key: str, game_display_name: str, source_path: str, ext: str) -> str:
     """
     Copie un fichier média téléchargé (déjà sur disque, ex: fichier temp
     téléchargé par le scraper) vers le bon dossier de la collection, nommé
-    d'après le jeu (sans extension d'origine de la rom, garde celle du média).
+    d'après le jeu. `ext` doit être la vraie extension du média (déterminée
+    via le Content-Type HTTP par le scraper, PAS devinée depuis l'URL --
+    voir screenscraper.download_media).
 
     Retourne le chemin final écrit. Appelle ensure_media_lines pour que
     settings.conf soit à jour après coup.
@@ -161,7 +163,8 @@ def save_media_file(collection: Collection, key: str, game_display_name: str, so
     target_dir = media_dir_for(collection, key)
     os.makedirs(target_dir, exist_ok=True)
 
-    _, ext = os.path.splitext(source_path)
+    if not ext.startswith("."):
+        ext = "." + ext
     dest_path = os.path.join(target_dir, game_display_name + ext)
     shutil.copyfile(source_path, dest_path)
 

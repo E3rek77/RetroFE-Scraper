@@ -60,7 +60,7 @@ MEDIA_CHOICES = [
     ("box_texture", "Texture de boite"),
     ("medium_front", "Boite (recto)"),
     ("medium_back", "Boite (verso)"),
-    ("cartridge", "Cartouche / disque"),
+    ("medium_disc", "Cartouche / disque"),
     ("support_texture", "Texture cartouche"),
     ("video", "Video"),
     ("video_normalise", "Video normalisee"),

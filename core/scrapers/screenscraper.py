@@ -21,12 +21,48 @@ retournés par jeuInfos.php, qui peuvent avoir légèrement changé côté serve
 """
 from __future__ import annotations
 
+import os
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
+from typing import Optional
+from urllib.parse import urlparse
 
 import requests
 
 from .base import GameMatch
+
+# Les URLs de médias ScreenScraper pointent vers un endpoint PHP dynamique
+# (ex: .../mediaJeu.php?systemeid=...&media=support-2D&crc=...) -- le chemin
+# de l'URL se termine donc TOUJOURS par ".php", quel que soit le type reel du
+# fichier renvoye. Deviner l'extension depuis l'URL est donc faux la plupart
+# du temps (on obtenait ".php" au lieu de ".png"/".jpg"/etc). La bonne methode
+# est de lire l'en-tete Content-Type de la reponse HTTP.
+_EXT_FROM_CONTENT_TYPE = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "image/bmp": ".bmp",
+    "image/x-icon": ".ico",
+    "video/mp4": ".mp4",
+    "video/x-msvideo": ".avi",
+    "video/webm": ".webm",
+    "video/quicktime": ".mov",
+    "application/pdf": ".pdf",
+    "text/plain": ".txt",
+}
+
+
+def _fallback_ext_from_url(url: str) -> str:
+    """Repli si le Content-Type est absent/inconnu : tente l'extension du
+    chemin d'URL, mais ignore ".php" (jamais une vraie extension de media
+    ici) au profit d'un defaut generique."""
+    path = urlparse(url).path
+    _, ext = os.path.splitext(path)
+    if ext and ext.lower() != ".php":
+        return ext
+    return ".jpg"
 
 API_BASE = "https://api.screenscraper.fr/api2"
 
@@ -61,7 +97,7 @@ SS_MEDIA_MAP = {
     "artwork_3d": "box-3D",
     "manual": "manuel",
     "support_texture": "support-texture",
-    "cartridge": "support-2D",
+    "medium_disc": "support-2D",
     "bezel": "bezel-16-9",
     "theme_pack": "themehs",
     "mix_v1": "mixrbv1",
@@ -82,6 +118,7 @@ SS_MEDIA_MAP = {
 RETROFE_NATIVE_KEYS = {
     "artwork_back", "artwork_front", "artwork_3d", "logo", "medium_back",
     "medium_front", "screenshot", "screentitle", "video", "system_artwork", "bezel",
+    "medium_disc",
 }
 
 
@@ -132,7 +169,8 @@ class ScreenScraperClient:
             return GameMatch(found=False)
 
         if resp.status_code == 430 or "quota" in resp.text.lower()[:400]:
-            raise ScreenScraperQuotaError("Quota ScreenScraper journalier depasse.")
+            detail = resp.text.strip()[:300]
+            raise ScreenScraperQuotaError(f"HTTP {resp.status_code} -- {detail}")
 
         try:
             resp.raise_for_status()
@@ -193,16 +231,22 @@ class ScreenScraperClient:
             media_urls=media_urls,
         )
 
-    def download_media(self, url: str, dest_path: str) -> bool:
+    def download_media(self, url: str, dest_path: str) -> Optional[str]:
+        """Telecharge le media vers dest_path. Retourne l'extension de
+        fichier detectee (ex: ".png") en cas de succes, None en cas
+        d'echec. L'extension est determinee via l'en-tete Content-Type de
+        la reponse (voir note en tete de fichier -- l'URL elle-meme n'est
+        pas fiable pour ca)."""
         try:
             resp = self.session.get(url, timeout=60, stream=True)
             resp.raise_for_status()
         except requests.RequestException:
-            return False
+            return None
         with open(dest_path, "wb") as f:
             for chunk in resp.iter_content(chunk_size=65536):
                 f.write(chunk)
-        return True
+        content_type = resp.headers.get("Content-Type", "").split(";")[0].strip().lower()
+        return _EXT_FROM_CONTENT_TYPE.get(content_type) or _fallback_ext_from_url(url)
 
     def fetch_systems_list(self) -> dict[str, str]:
         """Récupère la liste officielle des systèmes ScreenScraper (id -> nom).
